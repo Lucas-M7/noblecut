@@ -7,11 +7,12 @@ import { Appointment } from '@/src/types'
 import { Button } from '@/src/components/ui/Button'
 import { Card } from '@/src/components/ui/Card'
 import { Badge } from '@/src/components/ui/Badge'
+import { getLocalToday } from '@/src/lib/date'
 
 export default function AppointmentsPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [loading, setLoading] = useState(true)
-  const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0])
+  const [filterDate, setFilterDate] = useState(getLocalToday())
 
   useEffect(() => { loadAppointments() }, [filterDate])
 

@@ -1,4 +1,5 @@
 using BarberShop.Application.DTOs.Appointments;
+using BarberShop.Application.Helpers;
 using BarberShop.Domain.Entities;
 using BarberShop.Domain.Enums;
 using BarberShop.Infrastructure.Data;
@@ -42,7 +43,7 @@ public class AppointmentService(AppDbContext db, AvailabilityService availabilit
             throw new InvalidOperationException("Horário inválido. Use o formato HH:mm");
 
         // Regra 5: não permitir no passado
-        var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+        var today = DateTimeHelper.TodayInBrasilia();
         if (date < today)
             throw new InvalidOperationException("Não é possível agendar em datas passadas.");
 

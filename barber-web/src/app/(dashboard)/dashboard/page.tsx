@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
+import { getLocalToday } from "@/src/lib/date";
 import { api } from "@/src/lib/api";
 import { Appointment, Profile } from "@/src/types";
 import { Card } from "@/src/components/ui/Card";
@@ -18,7 +19,7 @@ export default function DashboardPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const today = new Date().toISOString().split("T")[0];
+      const today = getLocalToday()
       const prof = await api.get<Profile>("/api/profile").catch(() => null);
       setProfile(prof);
 

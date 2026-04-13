@@ -1,3 +1,4 @@
+using BarberShop.Application.Helpers;
 using BarberShop.Domain.Enums;
 using BarberShop.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -11,7 +12,7 @@ public class AvailabilityService(AppDbContext db)
         Guid serviceId,
         DateOnly date)
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+        var today = DateTimeHelper.TodayInBrasilia();
 
         if (date < today)
             throw new InvalidOperationException("Não é possível consultar datas no passado.");
@@ -100,7 +101,7 @@ public class AvailabilityService(AppDbContext db)
 
             // Verifica se já passou (para hoje)
             var isInPast = date == today &&
-                current.ToTimeSpan() <= DateTime.UtcNow.TimeOfDay;
+                current.ToTimeSpan() <= DateTimeHelper.NowInBrasilia().TimeOfDay;
 
             if (!overlapsLunch && !hasConflict && !isInPast)
                 slots.Add(current.ToString("HH:mm"));

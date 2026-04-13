@@ -8,6 +8,7 @@ import { PublicBarber, Service, AvailabilityResponse } from "@/src/types";
 import { Button } from "@/src/components/ui/Button";
 import { Input } from "@/src/components/ui/Input";
 import { Card } from "@/src/components/ui/Card";
+import { getLocalToday } from "@/src/lib/date";
 
 type Step = "service" | "date" | "slot" | "confirm";
 
@@ -28,7 +29,7 @@ export default function PublicPage() {
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = getLocalToday()
 
   useEffect(() => {
     async function load() {
