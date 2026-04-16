@@ -12,3 +12,5 @@ barber-web/.env.local
 z
 # Geral
 .DS_Store
+
+src/BarberShop.API/Logs

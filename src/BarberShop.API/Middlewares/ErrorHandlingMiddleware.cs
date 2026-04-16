@@ -13,12 +13,11 @@ public class ErrorHandlingMiddleware(RequestDelegate next, ILogger<ErrorHandling
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Unhandled exception");
             await HandleExceptionAsync(context, ex);
         }
     }
 
-    private static Task HandleExceptionAsync(HttpContext context, Exception exception)
+    private Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
         var statusCode = exception switch
         {
@@ -28,10 +27,32 @@ public class ErrorHandlingMiddleware(RequestDelegate next, ILogger<ErrorHandling
             _ => HttpStatusCode.InternalServerError // ATENÇÃO AQUI -> Mascarar erros 500
         };
 
-        var response = new { error = exception.Message };
+        // Log com nível adequado dependendo do tipo de erro
+        if (statusCode == HttpStatusCode.InternalServerError)
+        {
+            logger.LogError(exception, 
+            "Erro interno. Path: {Path} Method: {Method}",
+            context.Request.Path, 
+            context.Request.Method);
+        }
+        else
+        {
+            logger.LogWarning("Erro tratado [{StatusCode}]: {Message} Path: {Path}",
+            (int)statusCode,
+            exception.Message,
+            context.Request.Path);
+        }
+
+        var response = new
+        {
+            error = statusCode == HttpStatusCode.InternalServerError
+            ? "Ocorreu um erro interno. Tente novamente mais tarde."
+            : exception.Message
+        };
+
         var json = JsonSerializer.Serialize(response, new JsonSerializerOptions
         {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase 
         });
 
         context.Response.ContentType = "application/json";

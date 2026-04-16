@@ -2,6 +2,7 @@ using BarberShop.Application.DTOs.Appointments;
 using BarberShop.Application.Services;
 using BarberShop.Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 namespace BarberShop.API.Controllers;
@@ -80,6 +81,7 @@ public class PublicController(
     }
 
     [HttpPost("{slug}/appointments")]
+    [EnableRateLimiting("public-appointments")]
     public async Task<IActionResult> CreateAppointment(
         string slug,
         [FromBody] CreateAppointmentRequest request)

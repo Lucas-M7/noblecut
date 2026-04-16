@@ -2,12 +2,14 @@ using BarberShop.Application.DTOs.Auth;
 using BarberShop.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace BarberShop.API.Controllers;
 
 public class AuthController(AuthService authService) : BaseController
 {
     [HttpPost("register")]
+    [EnableRateLimiting("register")]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Name))
@@ -24,6 +26,7 @@ public class AuthController(AuthService authService) : BaseController
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
@@ -41,17 +44,18 @@ public class AuthController(AuthService authService) : BaseController
         return Ok(result);
     }
 
-    [HttpPost("confirm-email")]
-    public async Task<IActionResult> ConfirmEmail([FromQuery] string token)
-    {
-        if (string.IsNullOrWhiteSpace(token))
-            return BadRequest(new { error = "Token inválido." });
+    // [HttpPost("confirm-email")]
+    // public async Task<IActionResult> ConfirmEmail([FromQuery] string token)
+    // {
+    //     if (string.IsNullOrWhiteSpace(token))
+    //         return BadRequest(new { error = "Token inválido." });
 
-        await authService.ConfirmEmailAsync(token);
-        return Ok(new { message = "E-mail confirmado com sucesso!" });
-    }
+    //     await authService.ConfirmEmailAsync(token);
+    //     return Ok(new { message = "E-mail confirmado com sucesso!" });
+    // }
 
     [HttpPost("forgot-password")]
+    [EnableRateLimiting("login")]
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Email))
@@ -78,6 +82,7 @@ public class AuthController(AuthService authService) : BaseController
 
     [Authorize]
     [HttpPost("resend-confirmation")]
+    [EnableRateLimiting("login")]
     public async Task<IActionResult> ResendConfirmation()
     {
         await authService.ResendConfirmationAsync(GetUserId());
