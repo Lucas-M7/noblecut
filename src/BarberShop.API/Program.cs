@@ -1,4 +1,5 @@
 using BarberShop.API.Extensions;
+using BarberShop.API.Filters;
 using BarberShop.API.Middlewares;
 using BarberShop.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -15,7 +16,12 @@ try
     builder.AddCustomSerilg();
     
     builder.Services.AddAuthRateLimiting();
-    builder.Services.AddControllers();
+
+    builder.Services.AddControllers(options =>
+    {
+        options.Filters.Add<ValidationFilter>();
+    });
+    
     builder.Services.AddDatabase(builder.Configuration);
     builder.Services.AddApplicationServices();
     builder.Services.AddJwtAuthentication(builder.Configuration);

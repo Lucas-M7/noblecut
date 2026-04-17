@@ -18,12 +18,6 @@ public class ServicesController(ServiceService serviceService) : BaseController
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateServiceRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.Name))
-            return BadRequest(new { error = "Nome do serviço é obrigatório." });
-
-        if (request.DurationMinutes <= 0)
-            return BadRequest(new { error = "Duração deve ser maior que zero." });
-
         var result = await serviceService.CreateAsync(GetUserId(), request);
         return Created(string.Empty, result);
     }
@@ -31,12 +25,6 @@ public class ServicesController(ServiceService serviceService) : BaseController
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateServiceRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.Name))
-            return BadRequest(new { error = "Nome do serviço é obrigatório." });
-
-        if (request.DurationMinutes <= 0)
-            return BadRequest(new { error = "Duração deve ser maior que zero." });
-
         var result = await serviceService.UpdateAsync(GetUserId(), id, request);
         return Ok(result);
     }

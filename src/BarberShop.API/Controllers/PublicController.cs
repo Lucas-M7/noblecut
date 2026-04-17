@@ -64,8 +64,6 @@ public class PublicController(
         [FromQuery] Guid serviceId,
         [FromQuery] string date)
     {
-        if (serviceId == Guid.Empty)
-            return BadRequest(new { error = "serviceId é obrigatório." });
 
         if (string.IsNullOrWhiteSpace(date) || !DateOnly.TryParse(date, out var parsedDate))
             return BadRequest(new { error = "Data inválida. Use o formato YYYY-MM-DD." });
@@ -86,21 +84,6 @@ public class PublicController(
         string slug,
         [FromBody] CreateAppointmentRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.ClientName))
-            return BadRequest(new { error = "Nome do cliente é obrigatório." });
-
-        if (string.IsNullOrWhiteSpace(request.ClientPhone))
-            return BadRequest(new { error = "WhatsApp do cliente é obrigatório." });
-
-        if (request.ServiceId == Guid.Empty)
-            return BadRequest(new { error = "Serviço é obrigatório." });
-
-        if (string.IsNullOrWhiteSpace(request.AppointmentDate))
-            return BadRequest(new { error = "Data é obrigatória." });
-
-        if (string.IsNullOrWhiteSpace(request.StartTime))
-            return BadRequest(new { error = "Horário é obrigatório." });
-
         var profile = await db.BarberProfiles
             .FirstOrDefaultAsync(p => p.Slug == slug.ToLower());
 

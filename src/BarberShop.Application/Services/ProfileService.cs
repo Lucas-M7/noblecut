@@ -1,4 +1,5 @@
 using BarberShop.Application.DTOs.Profile;
+using BarberShop.Application.Helpers;
 using BarberShop.Domain.Entities;
 using BarberShop.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -17,7 +18,7 @@ public class ProfileService(AppDbContext db)
 
     public async Task<ProfileResponse> UpsertAsync(Guid userId, UpdateProfileRequest request)
     {
-        var slug = request.Slug.ToLower().Trim();
+        var slug = Sanitizer.Slug(request.Slug);
 
         var slugTaken = await db.BarberProfiles
             .AnyAsync(p => p.Slug == slug && p.UserId != userId);
@@ -42,9 +43,9 @@ public class ProfileService(AppDbContext db)
         }
         else
         {
-            profile.DisplayName = request.DisplayName.Trim();
-            profile.BusinessName = request.BusinessName.Trim();
-            profile.Phone = request.Phone.Trim();
+            profile.DisplayName = Sanitizer.Trim(request.DisplayName);
+            profile.BusinessName = Sanitizer.Trim(request.BusinessName);
+            profile.Phone = Sanitizer.Phone(request.Phone);
             profile.Slug = slug;
         }
 

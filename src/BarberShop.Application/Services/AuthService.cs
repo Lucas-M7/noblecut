@@ -9,6 +9,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.Extensions.Logging;
+using BarberShop.Application.Helpers;
 
 namespace BarberShop.Application.Services;
 
@@ -55,7 +56,15 @@ public class AuthService(AppDbContext db, IConfiguration config, EmailService em
 
     public async Task<AuthResponse> LoginAsync(LoginRequest request)
     {
-        var user = await db.Users.FirstOrDefaultAsync(u => u.Email == request.Email.ToLower());
+        // var user = await db.Users.FirstOrDefaultAsync(u => u.Email == request.Email.ToLower());
+
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            Email = Sanitizer.Email(request.Email),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+            IsEmailConfirmed = true
+        };
 
         if (user is null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
             throw new UnauthorizedAccessException("E-mail ou senha inválidos.");
@@ -104,7 +113,12 @@ public class AuthService(AppDbContext db, IConfiguration config, EmailService em
     public async Task ForgotPasswordAsync(ForgotPasswordRequest request)
     {
         // Sempre retorna sucesso para não revelar se o e-mail existe
-        var user = await db.Users.FirstOrDefaultAsync(u => u.Email == request.Email.ToLower());
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            Email = Sanitizer.Email(request.Email),
+        };
+
         if (user is null) return;
 
         // Invalida tokens anteriores de reset para este usuário

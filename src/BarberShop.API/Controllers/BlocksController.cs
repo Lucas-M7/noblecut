@@ -18,12 +18,6 @@ public class BlocksController(BlockService blockService) : BaseController
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateBlockRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.StartDate))
-            return BadRequest(new { error = "Data de início é obrigatória." });
-
-        if (string.IsNullOrWhiteSpace(request.EndDate))
-            return BadRequest(new { error = "Data de fim é obrigatória." });
-
         var result = await blockService.CreateAsync(GetUserId(), request);
         return Created(string.Empty, result);
     }

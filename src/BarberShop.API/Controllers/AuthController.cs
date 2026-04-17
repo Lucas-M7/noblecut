@@ -12,15 +12,6 @@ public class AuthController(AuthService authService) : BaseController
     [EnableRateLimiting("register")]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.Name))
-            return BadRequest(new { error = "Nome é obrigatório." });
-
-        if (string.IsNullOrWhiteSpace(request.Email))
-            return BadRequest(new { error = "E-mail é obrigatório." });
-
-        if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 6)
-            return BadRequest(new { error = "Senha deve ter pelo menos 6 caracteres." });
-
         var result = await authService.RegisterAsync(request);
         return Created(string.Empty, result);
     }
@@ -29,9 +20,6 @@ public class AuthController(AuthService authService) : BaseController
     [EnableRateLimiting("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
-            return BadRequest(new { error = "E-mail e senha são obrigatórios." });
-
         var result = await authService.LoginAsync(request);
         return Ok(result);
     }
@@ -58,9 +46,6 @@ public class AuthController(AuthService authService) : BaseController
     [EnableRateLimiting("login")]
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.Email))
-            return BadRequest(new { error = "E-mail é obrigatório." });
-
         await authService.ForgotPasswordAsync(request);
 
         // Sempre retorna sucesso para não revelar se o e-mail existe
@@ -70,12 +55,6 @@ public class AuthController(AuthService authService) : BaseController
     [HttpPost("reset-password")]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.Token))
-            return BadRequest(new { error = "Token inválido." });
-
-        if (string.IsNullOrWhiteSpace(request.NewPassword) || request.NewPassword.Length < 6)
-            return BadRequest(new { error = "A senha deve ter pelo menos 6 caracteres." });
-
         await authService.ResetPasswordAsync(request);
         return Ok(new { message = "Senha redefinida com sucesso!" });
     }
