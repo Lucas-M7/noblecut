@@ -56,18 +56,15 @@ public class AuthService(AppDbContext db, IConfiguration config, EmailService em
 
     public async Task<AuthResponse> LoginAsync(LoginRequest request)
     {
-        // var user = await db.Users.FirstOrDefaultAsync(u => u.Email == request.Email.ToLower());
-
-        var user = new User
-        {
-            Id = Guid.NewGuid(),
-            Email = Sanitizer.Email(request.Email),
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
-            IsEmailConfirmed = true
-        };
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Email == request.Email.ToLower());
 
         if (user is null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+        {
+            logger.LogWarning("Falha de autenticação para email: {Email}", request.Email);
             throw new UnauthorizedAccessException("E-mail ou senha inválidos.");
+        }
+
+        logger.LogInformation("Login bem-sucedido: {UserId}", user.Id);
 
         return new AuthResponse
         {
@@ -112,16 +109,11 @@ public class AuthService(AppDbContext db, IConfiguration config, EmailService em
 
     public async Task ForgotPasswordAsync(ForgotPasswordRequest request)
     {
-        // Sempre retorna sucesso para não revelar se o e-mail existe
-        var user = new User
-        {
-            Id = Guid.NewGuid(),
-            Email = Sanitizer.Email(request.Email),
-        };
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Email == request.Email.ToLower());
 
+        // Se o email não existe, retorna silenciosamente sem revelar isso
         if (user is null) return;
 
-        // Invalida tokens anteriores de reset para este usuário
         var oldTokens = await db.EmailTokens
             .Where(t => t.UserId == user.Id &&
                         t.Type == EmailTokenType.PasswordReset &&
