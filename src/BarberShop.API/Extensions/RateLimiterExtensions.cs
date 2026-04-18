@@ -66,7 +66,7 @@ public static class RateLimiterExtensions
                  factory: partition => new FixedWindowRateLimiterOptions
                  {
                      Window = TimeSpan.FromHours(1),
-                     PermitLimit = 10,
+                     PermitLimit = 5,
                      QueueLimit = 0,
                      QueueProcessingOrder = QueueProcessingOrder.OldestFirst
                  });
