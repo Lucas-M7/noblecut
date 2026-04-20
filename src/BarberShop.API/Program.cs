@@ -14,14 +14,14 @@ try
     var builder = WebApplication.CreateBuilder(args);
 
     builder.AddCustomSerilg();
-    
+
     builder.Services.AddAuthRateLimiting();
 
     builder.Services.AddControllers(options =>
     {
         options.Filters.Add<ValidationFilter>();
     });
-    
+
     builder.Services.AddDatabase(builder.Configuration);
     builder.Services.AddApplicationServices();
     builder.Services.AddJwtAuthentication(builder.Configuration);
@@ -43,21 +43,29 @@ try
         db.Database.Migrate();
     }
 
+    app.UseSerilogRequestLogging(options =>
+    {
+        options.MessageTemplate =
+            "{RequestMethod} {RequestPath} -> {StatusCode} em {Elapsed:0}ms";
+    });
     app.UseRouting();
-    app.UseRateLimiter();
+    app.UseMiddleware<SecurityHeadersMiddleware>();
     app.UseMiddleware<ErrorHandlingMiddleware>();
     app.UseCors();
+    app.UseRateLimiter();
     app.UseAuthentication();
     app.UseAuthorization();
     app.MapControllers();
 
+    Log.Information("API iniciada com sucesso.");
     app.Run();
 }
 catch (Exception ex)
 {
-    Log.Fatal(ex, "Erro fatal: a aplicação falhou ao iniciar.");
+    Log.Fatal(ex, "Erro fatal: a API falhou ao iniciar.");
 }
 finally
 {
+    // Garante que todos os logs pendentes são escritos antes de encerrar
     Log.CloseAndFlush();
 }

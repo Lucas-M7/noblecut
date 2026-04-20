@@ -4,21 +4,26 @@ using BarberShop.Domain.Enums;
 using BarberShop.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using Microsoft.Extensions.Logging;
-using BarberShop.Application.Helpers;
 
 namespace BarberShop.Application.Services;
 
-public class AuthService(AppDbContext db, IConfiguration config, EmailService emailService, ILogger<AuthService> logger)
+public class AuthService(
+    AppDbContext db,
+    IConfiguration config,
+    EmailService emailService,
+    ILogger<AuthService> logger)
 {
-
     public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
     {
-        var emailExists = await db.Users.AnyAsync(u => u.Email == request.Email.ToLower());
+        // Normaliza o email antes de verificar duplicata
+        var normalizedEmail = request.Email.Trim().ToLower();
+
+        var emailExists = await db.Users.AnyAsync(u => u.Email == normalizedEmail);
         if (emailExists)
             throw new InvalidOperationException("E-mail já cadastrado.");
 
@@ -26,7 +31,7 @@ public class AuthService(AppDbContext db, IConfiguration config, EmailService em
         {
             Id = Guid.NewGuid(),
             Name = request.Name.Trim(),
-            Email = request.Email.ToLower().Trim(),
+            Email = normalizedEmail,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
             IsEmailConfirmed = true
         };
@@ -34,16 +39,7 @@ public class AuthService(AppDbContext db, IConfiguration config, EmailService em
         db.Users.Add(user);
         await db.SaveChangesAsync();
 
-        // Tenta enviar o email mas não bloqueia o cadastro se falhar
-        // try
-        // {
-        //     var token = await CreateEmailTokenAsync(user.Id, EmailTokenType.EmailConfirmation, hours: 24);
-        //     await emailService.SendEmailConfirmationAsync(user.Email, user.Name, token);
-        // }
-        // catch (Exception ex)
-        // {
-        //     logger.LogWarning("Falha ao enviar email de confirmação para {Email}: {Error}", user.Email, ex.Message);
-        // }
+        logger.LogInformation("Novo usuário cadastrado. UserId: {UserId}", user.Id);
 
         return new AuthResponse
         {
@@ -56,15 +52,33 @@ public class AuthService(AppDbContext db, IConfiguration config, EmailService em
 
     public async Task<AuthResponse> LoginAsync(LoginRequest request)
     {
-        var user = await db.Users.FirstOrDefaultAsync(u => u.Email == request.Email.ToLower());
+        var normalizedEmail = request.Email.Trim().ToLower();
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Email == normalizedEmail);
 
-        if (user is null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+        // Proteção contra enumeração de usuários via timing attack:
+        if (user is null)
         {
-            logger.LogWarning("Falha de autenticação para email: {Email}", request.Email);
+            BCrypt.Net.BCrypt.Verify(
+                request.Password,
+                "$2a$11$dummyhashtopreventtimingXXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
+
+            // Log interno usa termo neutro — não revela se email existe
+            logger.LogWarning(
+                "Falha de autenticação. Nenhuma conta encontrada para o email informado.");
+
             throw new UnauthorizedAccessException("E-mail ou senha inválidos.");
         }
 
-        logger.LogInformation("Login bem-sucedido: {UserId}", user.Id);
+        // Usuário existe — verifica a senha normalmente
+        if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+        {
+            logger.LogWarning(
+                "Falha de autenticação. Senha incorreta para UserId: {UserId}", user.Id);
+
+            throw new UnauthorizedAccessException("E-mail ou senha inválidos.");
+        }
+
+        logger.LogInformation("Login bem-sucedido. UserId: {UserId}", user.Id);
 
         return new AuthResponse
         {
@@ -109,10 +123,15 @@ public class AuthService(AppDbContext db, IConfiguration config, EmailService em
 
     public async Task ForgotPasswordAsync(ForgotPasswordRequest request)
     {
-        var user = await db.Users.FirstOrDefaultAsync(u => u.Email == request.Email.ToLower());
+        var normalizedEmail = request.Email.Trim().ToLower();
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Email == normalizedEmail);
 
-        // Se o email não existe, retorna silenciosamente sem revelar isso
-        if (user is null) return;
+        // Retorna silenciosamente se email não existe
+        if (user is null)
+        {
+            logger.LogWarning("ForgotPassword: email não cadastrado solicitou reset.");
+            return;
+        }
 
         var oldTokens = await db.EmailTokens
             .Where(t => t.UserId == user.Id &&
@@ -124,14 +143,20 @@ public class AuthService(AppDbContext db, IConfiguration config, EmailService em
             old.UsedAt = DateTime.UtcNow;
 
         var token = await CreateEmailTokenAsync(user.Id, EmailTokenType.PasswordReset, hours: 1);
-        await emailService.SendPasswordResetAsync(user.Email, user.Name, token);
+
+        try
+        {
+            await emailService.SendPasswordResetAsync(user.Email, user.Name, token);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning("Falha ao enviar email de reset. UserId: {UserId}. Erro: {Error}",
+                user.Id, ex.Message);
+        }
     }
 
     public async Task ResetPasswordAsync(ResetPasswordRequest request)
     {
-        if (request.NewPassword.Length < 6)
-            throw new InvalidOperationException("A senha deve ter pelo menos 6 caracteres.");
-
         var emailToken = await db.EmailTokens
             .Include(t => t.User)
             .FirstOrDefaultAsync(t =>
@@ -146,6 +171,8 @@ public class AuthService(AppDbContext db, IConfiguration config, EmailService em
         emailToken.UsedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync();
+
+        logger.LogInformation("Senha redefinida com sucesso. UserId: {UserId}", emailToken.UserId);
     }
 
     public async Task ResendConfirmationAsync(Guid userId)
@@ -163,15 +190,15 @@ public class AuthService(AppDbContext db, IConfiguration config, EmailService em
         }
         catch (Exception ex)
         {
-            logger.LogWarning("Falha ao reenviar email para {Email}: {Error}", user.Email, ex.Message);
-            throw new InvalidOperationException("Não foi possível enviar o email. Tente novamente mais tarde.");
+            logger.LogWarning("Falha ao reenviar confirmação. UserId: {UserId}. Erro: {Error}",
+                user.Id, ex.Message);
+            throw new InvalidOperationException("Não foi possível enviar o email. Tente novamente.");
         }
     }
 
-    // Gera um token seguro e salva no banco
     private async Task<string> CreateEmailTokenAsync(Guid userId, EmailTokenType type, int hours)
     {
-        var token = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N"); // 64 chars
+        var token = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N");
 
         var emailToken = new EmailToken
         {

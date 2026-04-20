@@ -17,10 +17,19 @@ public static class SerilogExtensions
     {
         builder.Host.UseSerilog((context, services, configuration) => configuration
             .MinimumLevel.Information()
-            .WriteTo.Console()
-            .WriteTo.File("Logs/seguranca-.txt",
+            // Reduz ruído dos logs do ASP.NET e EF Core
+            .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
+            .MinimumLevel.Override("Microsoft.EntityFrameworkCore", Serilog.Events.LogEventLevel.Warning)
+            .Enrich.FromLogContext()
+            .WriteTo.Console(outputTemplate:
+                "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+            .WriteTo.File(
+                path: "logs/barbershop-.log",
                 rollingInterval: RollingInterval.Day,
-                restrictedToMinimumLevel: LogEventLevel.Warning)
+                retainedFileCountLimit: 7,
+                outputTemplate:
+                "[{Timestamp:yyyy-MM-dd HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+            // .CreateLogger()
         );
 
         return builder;

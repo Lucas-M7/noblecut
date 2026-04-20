@@ -10,12 +10,13 @@ public class ValidationFilter : IActionFilter
         if (!context.ModelState.IsValid)
         {
             // Pega apenas o primeiro erro de cada campo
-            var errors = context.ModelState
-                .Where(x => x.Value?.Errors.Count > 0)
-                .Select(x => x.Value!.Errors.First().ErrorMessage)
-                .ToList();
+            var firstError = context.ModelState
+                .Values
+                .SelectMany(v => v.Errors)
+                .Select(e => e.ErrorMessage)
+                .FirstOrDefault() ?? "Dados Inválidos.";
 
-                context.Result = new BadRequestObjectResult(new { error = errors.First() });
+                context.Result = new BadRequestObjectResult(new { error = firstError });
         }
     }
 

@@ -42,29 +42,29 @@ public class AuthController(AuthService authService) : BaseController
     //     return Ok(new { message = "E-mail confirmado com sucesso!" });
     // }
 
-    [HttpPost("forgot-password")]
-    [EnableRateLimiting("login")]
-    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
-    {
-        await authService.ForgotPasswordAsync(request);
+    // [HttpPost("forgot-password")]
+    // [EnableRateLimiting("login")]
+    // public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+    // {
+    //     await authService.ForgotPasswordAsync(request);
 
-        // Sempre retorna sucesso para não revelar se o e-mail existe
-        return Ok(new { message = "Se este e-mail estiver cadastrado, você receberá as instruções em breve." });
-    }
+    //     // Sempre retorna sucesso para não revelar se o e-mail existe
+    //     return Ok(new { message = "Se este e-mail estiver cadastrado, você receberá as instruções em breve." });
+    // }
 
-    [HttpPost("reset-password")]
-    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
-    {
-        await authService.ResetPasswordAsync(request);
-        return Ok(new { message = "Senha redefinida com sucesso!" });
-    }
+    // [HttpPost("reset-password")]
+    // public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+    // {
+    //     await authService.ResetPasswordAsync(request);
+    //     return Ok(new { message = "Senha redefinida com sucesso!" });
+    // }
 
-    [Authorize]
-    [HttpPost("resend-confirmation")]
-    [EnableRateLimiting("login")]
-    public async Task<IActionResult> ResendConfirmation()
-    {
-        await authService.ResendConfirmationAsync(GetUserId());
-        return Ok(new { message = "E-mail de confirmação reenviado." });
-    }
+    // [Authorize]
+    // [HttpPost("resend-confirmation")]
+    // [EnableRateLimiting("login")]
+    // public async Task<IActionResult> ResendConfirmation()
+    // {
+    //     await authService.ResendConfirmationAsync(GetUserId());
+    //     return Ok(new { message = "E-mail de confirmação reenviado." });
+    // }
 }
