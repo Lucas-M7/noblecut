@@ -9,6 +9,7 @@ import { useTheme } from '@/src/contexts/ThemeContext'
 const navItems = [
   { href: '/dashboard', label: 'Início', icon: '🏠' },
   { href: '/dashboard/appointments', label: 'Agendamentos', icon: '📅' },
+  { href: '/dashboard/reports', label: 'Relatório', icon: '📊' },
   { href: '/dashboard/services', label: 'Serviços', icon: '✂️' },
   { href: '/dashboard/hours', label: 'Horários', icon: '🕐' },
   { href: '/dashboard/blocks', label: 'Bloqueios', icon: '🚫' },

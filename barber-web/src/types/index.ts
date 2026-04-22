@@ -66,3 +66,23 @@ export interface AvailabilityResponse {
     date: string
     slots: string[]
 }
+
+export interface PeriodSummary {
+    revenue: number
+    appointments: number
+}
+
+export interface DailyRevenue {
+    date: string
+    revenue: number
+    appointments: number
+}
+
+export interface ReportSummary {
+    today: PeriodSummary
+    thisWeek: PeriodSummary
+    thisMonth: PeriodSummary
+    mostPopularService: string | null
+    bestDayOfWeek: string | null
+    last30Days: DailyRevenue[]
+}

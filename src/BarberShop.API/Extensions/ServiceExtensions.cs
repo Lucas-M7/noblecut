@@ -25,6 +25,7 @@ public static class ServiceExtensions
         services.AddScoped<AppointmentService>();
         services.AddScoped<AvailabilityService>();
         services.AddScoped<SpecialHoursService>();
+        services.AddScoped<ReportService>();
 
         return services;
     }
