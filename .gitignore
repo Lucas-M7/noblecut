@@ -14,3 +14,4 @@ z
 .DS_Store
 
 src/BarberShop.API/Logs
+src/BarberShop.API/logs
