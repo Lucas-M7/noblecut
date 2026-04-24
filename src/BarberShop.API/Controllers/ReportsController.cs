@@ -8,9 +8,12 @@ namespace BarberShop.API.Controllers;
 public class ReportsController(ReportService reportService) : BaseController
 {
     [HttpGet("summary")]
-    public async Task<IActionResult> GetSummary()
+    public async Task<IActionResult> GetSummary([FromQuery] string period = "this-month")
     {
-        var result = await reportService.GetSummaryAsync(GetUserId());
+        if (!ReportService.ValidPeriods.Contains(period))
+            return BadRequest(new { error = "Período inválido." });
+
+        var result = await reportService.GetSummaryAsync(GetUserId(), period);
         return Ok(result);
     }
 }

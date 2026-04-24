@@ -68,21 +68,25 @@ export interface AvailabilityResponse {
 }
 
 export interface PeriodSummary {
-    revenue: number
-    appointments: number
+  revenue: number
+  appointments: number
+  previousRevenue: number | null
+  previousAppointments: number | null
+  revenueChangePercent: number | null
 }
 
 export interface DailyRevenue {
-    date: string
-    revenue: number
-    appointments: number
+  date: string
+  label: string
+  revenue: number
+  appointments: number
 }
 
 export interface ReportSummary {
-    today: PeriodSummary
-    thisWeek: PeriodSummary
-    thisMonth: PeriodSummary
-    mostPopularService: string | null
-    bestDayOfWeek: string | null
-    last30Days: DailyRevenue[]
+  periodLabel: string
+  today: PeriodSummary
+  selectedPeriod: PeriodSummary
+  mostPopularService: string | null
+  bestDayOfWeek: string | null
+  chartData: DailyRevenue[]
 }
