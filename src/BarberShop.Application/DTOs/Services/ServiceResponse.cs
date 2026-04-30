@@ -1,10 +1,10 @@
 namespace BarberShop.Application.DTOs.Services;
 
-public class ServiceResponse
+public record ServiceResponse
 {
-    public Guid Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public int DurationMinutes { get; set; }
-    public decimal? Price { get; set; }
-    public bool IsActive { get; set; }
+    public Guid Id { get; init; }
+    public string Name { get; init; } = string.Empty;
+    public int DurationMinutes { get; init; }
+    public decimal? Price { get; init; }
+    public bool IsActive { get; init; }
 }

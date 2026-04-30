@@ -1,33 +1,34 @@
 namespace BarberShop.Application.DTOs.Reports;
 
-public class ReportSummaryResponse
+public record ReportSummaryResponse
 {
-    public PeriodSummary Today { get; set; } = new();
-    public PeriodSummary SelectedPeriod { get; set; } = new();
-    public string? MostPopularService { get; set; }
-    public string? BestDayOfWeek { get; set; }
-    public List<DailyRevenue> ChartData { get; set; } = [];
-    public string PeriodLabel { get; set; } = string.Empty;
+    public string PeriodLabel { get; init; } = string.Empty;
+    public PeriodSummary Today { get; init; } = new();
+    public PeriodSummary SelectedPeriod { get; init; } = new();
+    public string? MostPopularService { get; init; }
+    public string? BestDayOfWeek { get; init; }
+    public List<DailyRevenue> ChartData { get; init; } = [];
 }
 
-public class PeriodSummary
+public record PeriodSummary
 {
-    public decimal Revenue { get; set; }
-    public int Appointments { get; set; }
-    public decimal? PreviousRevenue { get; set; }
-    public int? PreviousAppointments { get; set; }
+    public decimal Revenue { get; init; }
+    public int Appointments { get; init; }
+    public decimal? PreviousRevenue { get; init; }
+    public int? PreviousAppointments { get; init; }
 
-    // Variação percentual em relação ao período anterior
+    // Propriedade calculada — permitida em records
     public decimal? RevenueChangePercent =>
         PreviousRevenue is null or 0
             ? null
-            : Math.Round((Revenue - PreviousRevenue.Value) / PreviousRevenue.Value * 100, 1);
+            : Math.Round(
+                (Revenue - PreviousRevenue.Value) / PreviousRevenue.Value * 100, 1);
 }
 
-public class DailyRevenue
+public record DailyRevenue
 {
-    public string Date { get; set; } = string.Empty;
-    public string Label { get; set; } = string.Empty; // "10/07" ou "Jul" dependendo do período
-    public decimal Revenue { get; set; }
-    public int Appointments { get; set; }
+    public string Date { get; init; } = string.Empty;
+    public string Label { get; init; } = string.Empty;
+    public decimal Revenue { get; init; }
+    public int Appointments { get; init; }
 }

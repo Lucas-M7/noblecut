@@ -2,10 +2,10 @@ using System.ComponentModel.DataAnnotations;
 
 namespace BarberShop.Application.DTOs.Auth;
 
-public class ForgotPasswordRequest
+public record ForgotPasswordRequest
 {
     [Required(ErrorMessage = "E-mail é obrigatório.")]
-    [EmailAddress(ErrorMessage = "E-mail inválido.")]
+    [EmailAddress(ErrorMessage = "Formato de e-mail inválido.")]
     [StringLength(150, ErrorMessage = "E-mail deve ter no máximo 150 caracteres.")]
-    public string Email { get; set; } = string.Empty;
+    public string Email { get; init; } = string.Empty;
 }

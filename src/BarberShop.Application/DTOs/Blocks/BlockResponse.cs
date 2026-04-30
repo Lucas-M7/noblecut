@@ -1,9 +1,9 @@
 namespace BarberShop.Application.DTOs.Blocks;
 
-public class BlockResponse
+public record BlockResponse
 {
-    public Guid Id { get; set; }
-    public string StartDate { get; set; } = string.Empty;
-    public string EndDate { get; set; } = string.Empty;
-    public string? Reason { get; set; }
+    public Guid Id { get; init; }
+    public string StartDate { get; init; } = string.Empty;
+    public string EndDate { get; init; } = string.Empty;
+    public string? Reason { get; init; }
 }

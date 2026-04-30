@@ -1,13 +1,13 @@
 namespace BarberShop.Application.DTOs.WorkingHours;
 
-public class WorkingHourResponse
+public record WorkingHourResponse
 {
-    public Guid Id { get; set; }
-    public DayOfWeek DayOfWeek { get; set; }
-    public bool IsOpen { get; set; }
-    public string StartTime { get; set; } = string.Empty;
-    public string EndTime { get; set; } = string.Empty;
-    public bool HasLunchBreak { get; set; }
-    public string? LunchStart { get; set; }
-    public string? LunchEnd { get; set; }
+    public Guid Id { get; init; }
+    public DayOfWeek DayOfWeek { get; init; }
+    public bool IsOpen { get; init; }
+    public string StartTime { get; init; } = string.Empty;
+    public string EndTime { get; init; } = string.Empty;
+    public bool HasLunchBreak { get; init; }
+    public string? LunchStart { get; init; }
+    public string? LunchEnd { get; init; }
 }
