@@ -26,6 +26,7 @@ public static class ServiceExtensions
         services.AddScoped<AvailabilityService>();
         services.AddScoped<SpecialHoursService>();
         services.AddScoped<ReportService>();
+        services.AddScoped<CloudinaryService>();
 
         return services;
     }

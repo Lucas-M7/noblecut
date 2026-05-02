@@ -8,6 +8,8 @@ public class BarberProfile
     public string BusinessName { get; set; } = string.Empty;
     public string Phone { get; set; } = string.Empty;
     public string Slug { get; set; } = string.Empty;
+    public string? PhotoUrl { get; set; }
+    public string PrimaryColor { get; set; } = "#18181b";
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 

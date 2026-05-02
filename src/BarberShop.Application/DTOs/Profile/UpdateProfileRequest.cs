@@ -23,4 +23,8 @@ public record UpdateProfileRequest
     [RegularExpression(@"^[a-z0-9\-]+$",
         ErrorMessage = "Slug deve conter apenas letras minúsculas, números e hífens.")]
     public string Slug { get; init; } = string.Empty;
+
+    [RegularExpression(@"^#[0-9A-Fa-f]{6}$",
+        ErrorMessage = "Cor deve ser um hexadecimal válido. Ex: #1a2b3c")]
+    public string PrimaryColor { get; init; } = "#18181b";
 }

@@ -29,7 +29,9 @@ public class PublicController(
             profile.DisplayName,
             profile.BusinessName,
             profile.Phone,
-            profile.Slug
+            profile.Slug,
+            profile.PhotoUrl,
+            profile.PrimaryColor
         });
     }
 

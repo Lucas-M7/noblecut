@@ -2,15 +2,32 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import Image from "next/image";
 import toast from "react-hot-toast";
 import { api } from "@/src/lib/api";
 import { PublicBarber, Service, AvailabilityResponse } from "@/src/types";
-import { Button } from "@/src/components/ui/Button";
 import { Input } from "@/src/components/ui/Input";
 import { Card } from "@/src/components/ui/Card";
-import { getLocalToday } from "@/src/lib/date";
 
 type Step = "service" | "date" | "slot" | "confirm";
+
+function getContrastColor(hex: string): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.5 ? "#000000" : "#ffffff";
+}
+
+function formatDate(d: string): string {
+  const [, m, day] = d.split("-");
+  return `${day}/${m}`;
+}
+
+function formatDateFull(d: string): string {
+  const [y, m, day] = d.split("-");
+  return `${day}/${m}/${y}`;
+}
 
 export default function PublicPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -29,7 +46,7 @@ export default function PublicPage() {
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  const today = getLocalToday()
+  const today = new Date().toISOString().split("T")[0];
 
   useEffect(() => {
     async function load() {
@@ -90,14 +107,23 @@ export default function PublicPage() {
     }
   }
 
-  function formatDate(d: string) {
-    const [y, m, day] = d.split("-");
-    return `${day}/${m}/${y}`;
+  function resetFlow() {
+    setSuccess(false);
+    setStep("service");
+    setSelectedService(null);
+    setSelectedDate("");
+    setSelectedSlot("");
+    setSlots([]);
+    setForm({ clientName: "", clientPhone: "" });
   }
 
+  const primaryColor = barber?.primaryColor ?? "#18181b";
+  const contrastColor = getContrastColor(primaryColor);
+
+  // ── Tela: barbeiro não encontrado ─────────────────────────────────────────
   if (notFound) {
     return (
-      <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex items-center justify-center">
+      <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex items-center justify-center p-4">
         <div className="text-center">
           <p className="text-4xl mb-4">✂️</p>
           <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
@@ -111,20 +137,18 @@ export default function PublicPage() {
     );
   }
 
+  // ── Tela: agendamento confirmado ──────────────────────────────────────────
   if (success) {
-    // Monta a mensagem que vai pré-preenchida no WhatsApp do barbeiro
+    const phone = barber?.phone.replace(/\D/g, "");
     const mensagem = [
-      `Olá! Acabei de agendar pelo seu sistema.`,
+      `Olá! Acabei de agendar pelo seu sistema. 😊`,
       ``,
       `*Serviço:* ${selectedService?.name}`,
-      `*Data:* ${formatDate(selectedDate)}`,
+      `*Data:* ${formatDateFull(selectedDate)}`,
       `*Horário:* ${selectedSlot}`,
       `*Nome:* ${form.clientName}`,
     ].join("\n");
-
-    // Remove tudo que não é número do telefone e monta o link
-    const telefone = barber?.phone.replace(/\D/g, "");
-    const whatsappUrl = `https://wa.me/55${telefone}?text=${encodeURIComponent(mensagem)}`;
+    const whatsappUrl = `https://wa.me/55${phone}?text=${encodeURIComponent(mensagem)}`;
 
     return (
       <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex items-center justify-center p-4">
@@ -134,7 +158,6 @@ export default function PublicPage() {
             Agendamento confirmado!
           </h1>
 
-          {/* Resumo do agendamento */}
           <div className="text-sm text-zinc-500 dark:text-zinc-400 mt-4 flex flex-col gap-1 text-left bg-zinc-50 dark:bg-zinc-800 rounded-xl p-4">
             <p>
               <strong className="text-zinc-700 dark:text-zinc-300">
@@ -146,7 +169,7 @@ export default function PublicPage() {
               <strong className="text-zinc-700 dark:text-zinc-300">
                 Data:
               </strong>{" "}
-              {formatDate(selectedDate)}
+              {formatDateFull(selectedDate)}
             </p>
             <p>
               <strong className="text-zinc-700 dark:text-zinc-300">
@@ -163,8 +186,7 @@ export default function PublicPage() {
           </div>
 
           <div className="flex flex-col gap-3 mt-6">
-            {/* Botão principal: avisar pelo WhatsApp */}
-            {telefone && (
+            {phone && (
               <a
                 href={whatsappUrl}
                 target="_blank"
@@ -178,81 +200,95 @@ export default function PublicPage() {
               </a>
             )}
 
-            {/* Botão secundário: fazer outro agendamento */}
-            <Button
-              variant="secondary"
-              className="w-full"
-              onClick={() => {
-                setSuccess(false);
-                setStep("service");
-                setSelectedService(null);
-                setSelectedDate("");
-                setSelectedSlot("");
-                setSlots([]);
-                setForm({ clientName: "", clientPhone: "" });
-              }}
+            <button
+              onClick={resetFlow}
+              className="w-full border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 font-medium py-2 px-4 rounded-lg transition-colors text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
             >
               Fazer outro agendamento
-            </Button>
+            </button>
           </div>
         </Card>
       </div>
     );
   }
 
+  // ── Tela principal: fluxo de agendamento ──────────────────────────────────
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 p-4">
-      <div className="max-w-lg mx-auto">
-        <div className="text-center py-8">
-          <div className="w-12 h-12 md:w-16 md:h-16 bg-zinc-900 dark:bg-zinc-100 rounded-full flex items-center justify-center mx-auto text-2xl">
-            ✂️
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 pb-10">
+      <div className="max-w-lg mx-auto px-4">
+        {/* ── Cabeçalho personalizado ──────────────────────────────────── */}
+        <div
+          className="rounded-b-2xl px-6 pt-10 pb-8 text-center mb-6"
+          style={{ backgroundColor: primaryColor }}
+        >
+          <div
+            className="w-20 h-20 rounded-full mx-auto mb-4 overflow-hidden border-4 flex items-center justify-center text-3xl"
+            style={{ borderColor: `${contrastColor}33` }}
+          >
+            {barber?.photoUrl ? (
+              <Image
+                src={barber.photoUrl}
+                alt={barber?.displayName ?? "Barbeiro"}
+                width={80}
+                height={80}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span style={{ color: contrastColor }}>✂️</span>
+            )}
           </div>
-          <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 mt-4">
+
+          <h1 className="text-xl font-bold" style={{ color: contrastColor }}>
             {barber?.displayName ?? "..."}
           </h1>
-          <p className="text-zinc-500 dark:text-zinc-400 text-sm">
+          <p
+            className="text-sm mt-1"
+            style={{ color: contrastColor, opacity: 0.8 }}
+          >
             {barber?.businessName}
           </p>
         </div>
 
-        {/* Indicador de etapas */}
-        <div className="flex items-center justify-center gap-2 mb-8">
-          {(["service", "date", "slot", "confirm"] as Step[]).map((s, i) => (
-            <div key={s} className="flex items-center gap-2">
-              <div
-                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors
-                ${
-                  step === s
-                    ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900"
-                    : (
-                          ["service", "date", "slot", "confirm"] as Step[]
-                        ).indexOf(step) > i
-                      ? "bg-green-500 text-white"
-                      : "bg-zinc-200 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400"
-                }`}
-              >
-                {(["service", "date", "slot", "confirm"] as Step[]).indexOf(
-                  step,
-                ) > i
-                  ? "✓"
-                  : i + 1}
+        {/* ── Indicador de etapas ───────────────────────────────────────── */}
+        <div className="flex items-center justify-center gap-2 mb-6">
+          {(["service", "date", "slot", "confirm"] as Step[]).map((s, i) => {
+            const steps = ["service", "date", "slot", "confirm"] as Step[];
+            const currentIndex = steps.indexOf(step);
+            const isActive = step === s;
+            const isDone = currentIndex > i;
+
+            return (
+              <div key={s} className="flex items-center gap-2">
+                <div
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all"
+                  style={
+                    isActive
+                      ? { backgroundColor: primaryColor, color: contrastColor }
+                      : isDone
+                        ? { backgroundColor: "#22c55e", color: "#ffffff" }
+                        : { backgroundColor: "#e4e4e7", color: "#71717a" }
+                  }
+                >
+                  {isDone ? "✓" : i + 1}
+                </div>
+                {i < 3 && (
+                  <div className="w-8 h-px bg-zinc-300 dark:bg-zinc-700" />
+                )}
               </div>
-              {i < 3 && (
-                <div className="w-8 h-px bg-zinc-300 dark:bg-zinc-700" />
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
 
-        {/* ETAPA 1: Escolher serviço */}
+        {/* ── ETAPA 1: Escolher serviço ─────────────────────────────────── */}
         {step === "service" && (
           <Card>
             <h2 className="font-semibold text-zinc-900 dark:text-zinc-100 mb-4">
               Escolha o serviço
             </h2>
+
             {services.length === 0 ? (
               <p className="text-sm text-zinc-400 dark:text-zinc-500">
-                Nenhum serviço disponível.
+                Nenhum serviço disponível no momento.
               </p>
             ) : (
               <div className="flex flex-col gap-3">
@@ -263,7 +299,7 @@ export default function PublicPage() {
                       setSelectedService(s);
                       setStep("date");
                     }}
-                    className="flex items-center justify-between p-4 border border-zinc-200 dark:border-zinc-700 rounded-xl hover:border-zinc-900 dark:hover:border-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all text-left"
+                    className="flex items-center justify-between p-4 border-2 border-zinc-200 dark:border-zinc-700 rounded-xl transition-all text-left hover:shadow-sm"
                   >
                     <div>
                       <p className="font-medium text-zinc-900 dark:text-zinc-100">
@@ -273,8 +309,8 @@ export default function PublicPage() {
                         {s.durationMinutes} min
                       </p>
                     </div>
-                    {s.price && (
-                      <p className="font-semibold text-zinc-900 dark:text-zinc-100">
+                    {s.price != null && (
+                      <p className="font-semibold text-zinc-900 dark:text-zinc-100 shrink-0">
                         R$ {s.price.toFixed(2).replace(".", ",")}
                       </p>
                     )}
@@ -285,7 +321,7 @@ export default function PublicPage() {
           </Card>
         )}
 
-        {/* ETAPA 2: Escolher data */}
+        {/* ── ETAPA 2: Escolher data ────────────────────────────────────── */}
         {step === "date" && (
           <Card>
             <h2 className="font-semibold text-zinc-900 dark:text-zinc-100 mb-1">
@@ -297,6 +333,7 @@ export default function PublicPage() {
                 {selectedService?.name}
               </strong>
             </p>
+
             <Input
               label="Data"
               type="date"
@@ -304,31 +341,37 @@ export default function PublicPage() {
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
             />
+
             <div className="flex gap-3 mt-6">
-              <Button variant="secondary" onClick={() => setStep("service")}>
+              <button
+                onClick={() => setStep("service")}
+                className="flex-1 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 py-2 px-4 rounded-lg text-sm font-medium hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+              >
                 Voltar
-              </Button>
-              <Button
+              </button>
+              <button
                 disabled={!selectedDate}
                 onClick={() => {
                   setStep("slot");
                   loadSlots(selectedDate);
                 }}
+                className="flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all disabled:opacity-50"
+                style={{ backgroundColor: primaryColor, color: contrastColor }}
               >
                 Ver horários
-              </Button>
+              </button>
             </div>
           </Card>
         )}
 
-        {/* ETAPA 3: Escolher horário */}
+        {/* ── ETAPA 3: Escolher horário ─────────────────────────────────── */}
         {step === "slot" && (
           <Card>
             <h2 className="font-semibold text-zinc-900 dark:text-zinc-100 mb-1">
               Escolha o horário
             </h2>
             <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
-              {selectedService?.name} · {formatDate(selectedDate)}
+              {selectedService?.name} · {formatDateFull(selectedDate)}
             </p>
 
             {loadingSlots ? (
@@ -345,12 +388,19 @@ export default function PublicPage() {
                   <button
                     key={slot}
                     onClick={() => setSelectedSlot(slot)}
-                    className={`py-2 px-3 rounded-lg border text-sm font-medium transition-all
-                      ${
-                        selectedSlot === slot
-                          ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 border-zinc-900 dark:border-zinc-100"
-                          : "border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:border-zinc-900 dark:hover:border-zinc-400"
-                      }`}
+                    className="py-2 px-3 rounded-lg border text-sm font-medium transition-all"
+                    style={
+                      selectedSlot === slot
+                        ? {
+                            backgroundColor: primaryColor,
+                            color: contrastColor,
+                            borderColor: primaryColor,
+                          }
+                        : {
+                            borderColor: "#e4e4e7",
+                            color: "#3f3f46",
+                          }
+                    }
                   >
                     {slot}
                   </button>
@@ -359,20 +409,25 @@ export default function PublicPage() {
             )}
 
             <div className="flex gap-3 mt-6">
-              <Button variant="secondary" onClick={() => setStep("date")}>
+              <button
+                onClick={() => setStep("date")}
+                className="flex-1 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 py-2 px-4 rounded-lg text-sm font-medium hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+              >
                 Voltar
-              </Button>
-              <Button
+              </button>
+              <button
                 disabled={!selectedSlot}
                 onClick={() => setStep("confirm")}
+                className="flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all disabled:opacity-50"
+                style={{ backgroundColor: primaryColor, color: contrastColor }}
               >
                 Continuar
-              </Button>
+              </button>
             </div>
           </Card>
         )}
 
-        {/* ETAPA 4: Confirmar */}
+        {/* ── ETAPA 4: Confirmar ────────────────────────────────────────── */}
         {step === "confirm" && (
           <Card>
             <h2 className="font-semibold text-zinc-900 dark:text-zinc-100 mb-4">
@@ -384,7 +439,8 @@ export default function PublicPage() {
                 ✂️ <strong>{selectedService?.name}</strong>
               </p>
               <p className="text-sm text-zinc-600 dark:text-zinc-300">
-                📅 {formatDate(selectedDate)} às <strong>{selectedSlot}</strong>
+                📅 {formatDateFull(selectedDate)} às{" "}
+                <strong>{selectedSlot}</strong>
               </p>
             </div>
 
@@ -399,7 +455,7 @@ export default function PublicPage() {
                 required
               />
               <Input
-                label="WhatsApp"
+                label="WhatsApp (somente números)"
                 placeholder="81999999999"
                 type="tel"
                 value={form.clientPhone}
@@ -411,12 +467,20 @@ export default function PublicPage() {
             </div>
 
             <div className="flex gap-3 mt-6">
-              <Button variant="secondary" onClick={() => setStep("slot")}>
+              <button
+                onClick={() => setStep("slot")}
+                className="flex-1 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 py-2 px-4 rounded-lg text-sm font-medium hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+              >
                 Voltar
-              </Button>
-              <Button loading={saving} onClick={handleConfirm}>
-                Confirmar agendamento
-              </Button>
+              </button>
+              <button
+                disabled={saving}
+                onClick={handleConfirm}
+                className="flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all disabled:opacity-50"
+                style={{ backgroundColor: primaryColor, color: contrastColor }}
+              >
+                {saving ? "Confirmando..." : "Confirmar agendamento"}
+              </button>
             </div>
           </Card>
         )}

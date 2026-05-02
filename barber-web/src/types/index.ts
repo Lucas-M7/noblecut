@@ -13,6 +13,8 @@ export interface Profile {
     businessName: string
     phone: string
     slug: string
+    photoUrl: string | null
+    primaryColor: string
 }
 
 export interface Service {
@@ -60,6 +62,8 @@ export interface PublicBarber {
     businessName: string
     phone: string
     slug: string
+    photoUrl: string | null
+    primaryColor: string
 }
 
 export interface AvailabilityResponse {
