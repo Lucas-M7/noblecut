@@ -1,3 +1,4 @@
+using BarberShop.Application.Resolvers;
 using BarberShop.Application.Services;
 using BarberShop.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -16,6 +17,8 @@ public static class ServiceExtensions
 
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
+        services.AddScoped<BarberProfileResolver>();
+        
         services.AddScoped<EmailService>();
         services.AddScoped<AuthService>();
         services.AddScoped<ProfileService>();

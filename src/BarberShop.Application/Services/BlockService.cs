@@ -1,11 +1,13 @@
 using BarberShop.Application.DTOs.Blocks;
+using BarberShop.Application.Resolvers;
 using BarberShop.Domain.Entities;
 using BarberShop.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace BarberShop.Application.Services;
 
-public class BlockService(AppDbContext db)
+public class BlockService(AppDbContext db,
+    BarberProfileResolver profileResolver)
 {
     public async Task<List<BlockResponse>> GetAsync(Guid userId)
     {
@@ -31,7 +33,7 @@ public class BlockService(AppDbContext db)
         if (end < start)
             throw new InvalidOperationException("A data de fim não pode ser anterior à data de início.");
 
-        var profile = await GetProfileAsync(userId);
+        var profile = await profileResolver.ResolveAsync(userId);
 
         var block = new ScheduleBlock
         {
@@ -50,7 +52,7 @@ public class BlockService(AppDbContext db)
 
     public async Task DeleteAsync(Guid userId, Guid blockId)
     {
-        var profile = await GetProfileAsync(userId);
+        var profile = await profileResolver.ResolveAsync(userId);
 
         var block = await db.ScheduleBlocks
             .FirstOrDefaultAsync(b => b.Id == blockId && b.BarberProfileId == profile.Id)
@@ -58,12 +60,6 @@ public class BlockService(AppDbContext db)
 
         db.ScheduleBlocks.Remove(block);
         await db.SaveChangesAsync();
-    }
-
-    private async Task<BarberProfile> GetProfileAsync(Guid userId)
-    {
-        return await db.BarberProfiles.FirstOrDefaultAsync(p => p.UserId == userId)
-            ?? throw new KeyNotFoundException("Perfil não encontrado.");
     }
 
     private static BlockResponse ToResponse(ScheduleBlock b) => new()

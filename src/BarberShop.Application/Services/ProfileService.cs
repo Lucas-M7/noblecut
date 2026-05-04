@@ -1,4 +1,5 @@
 using BarberShop.Application.DTOs.Profile;
+using BarberShop.Application.Resolvers;
 using BarberShop.Domain.Entities;
 using BarberShop.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -9,14 +10,12 @@ namespace BarberShop.Application.Services;
 public class ProfileService(
     AppDbContext db,
     CloudinaryService cloudinaryService,
+    BarberProfileResolver profileResolver,
     ILogger<ProfileService> logger)
 {
     public async Task<ProfileResponse> GetAsync(Guid userId)
     {
-        var profile = await db.BarberProfiles
-            .FirstOrDefaultAsync(p => p.UserId == userId)
-            ?? throw new KeyNotFoundException("Perfil não encontrado.");
-
+        var profile = await profileResolver.ResolveAsync(userId);
         return ToResponse(profile);
     }
 
@@ -30,6 +29,8 @@ public class ProfileService(
         if (slugTaken)
             throw new InvalidOperationException("Este slug já está em uso.");
 
+        // Aqui o perfil pode não existir ainda
+        // Por isso não precisa do resolver aqui, ele lancaria exceção
         var profile = await db.BarberProfiles.FirstOrDefaultAsync(p => p.UserId == userId);
 
         if (profile is null)

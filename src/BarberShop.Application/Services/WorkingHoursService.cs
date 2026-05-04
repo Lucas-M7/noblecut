@@ -1,11 +1,13 @@
 using BarberShop.Application.DTOs.WorkingHours;
+using BarberShop.Application.Resolvers;
 using BarberShop.Domain.Entities;
 using BarberShop.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace BarberShop.Application.Services;
 
-public class WorkingHoursService(AppDbContext db)
+public class WorkingHoursService(AppDbContext db,
+    BarberProfileResolver profileResolver)
 {
     public async Task<List<WorkingHourResponse>> GetAsync(Guid userId)
     {
@@ -21,7 +23,7 @@ public class WorkingHoursService(AppDbContext db)
 
     public async Task<List<WorkingHourResponse>> UpsertAsync(Guid userId, UpdateWorkingHoursRequest request)
     {
-        var profile = await GetProfileAsync(userId);
+        var profile = await profileResolver.ResolveAsync(userId);
         var existing = await db.WorkingHours
             .Where(w => w.BarberProfileId == profile.Id)
             .ToListAsync();
@@ -87,10 +89,60 @@ public class WorkingHoursService(AppDbContext db)
         return await GetAsync(userId);
     }
 
-    private async Task<BarberProfile> GetProfileAsync(Guid userId)
+    /// <summary>
+    /// Valida e converte todos os itens do request antes de qualquer mutação.
+    /// 
+    /// Esse método está separado pois nenhum dado foi modificado ainda.
+    /// Isso evita estados parcialmente modificados, ou valida tudo ou rejeita tudo.
+    /// </summary>
+    /// <exception cref="InvalidOperationException"></exception>
+    private static List<ParsedWorkingHour> ValidateAndParseHours(
+        List<WorkingHourItem> hours)
     {
-        return await db.BarberProfiles.FirstOrDefaultAsync(p => p.UserId == userId)
-            ?? throw new KeyNotFoundException("Perfil não encontrado.");
+        var result = new List<ParsedWorkingHour>();
+
+        foreach (var item in hours)
+        {
+            if (!TimeOnly.TryParse(item.StartTime, out var start))
+                throw new InvalidOperationException(
+                    $"Horário de início inválido para: {item.DayOfWeek}.");
+
+            if (!TimeOnly.TryParse(item.EndTime, out var end))
+                throw new InvalidOperationException(
+                    $"Horário de fim inválido para: {item.DayOfWeek}.");
+
+            if (item.IsOpen && end <= start)
+                throw new InvalidOperationException(
+                    $"Horário de fim deve ser após o início para: {item.DayOfWeek}.");
+
+            TimeOnly? lunchStart = null;
+            TimeOnly? lunchEnd = null;
+
+            if (item.HasLunchBreak)
+            {
+                if (!TimeOnly.TryParse(item.LunchStart, out var ls))
+                    throw new InvalidOperationException(
+                        $"Horário de início do almoço inválido para {item.DayOfWeek}.");
+
+                if (!TimeOnly.TryParse(item.LunchEnd, out var le))
+                    throw new InvalidOperationException(
+                        $"Horário de fim do almoço inválido para {item.DayOfWeek}.");
+
+                if (le <= ls)
+                    throw new InvalidOperationException(
+                        $"Fim do almoço deve ser após o início para {item.DayOfWeek}.");
+
+                lunchStart = ls;
+                lunchEnd = le;
+            }
+
+            result.Add(new ParsedWorkingHour(
+                item.DayOfWeek, item.IsOpen,
+                start, end,
+                item.HasLunchBreak, lunchStart, lunchEnd));
+        }
+
+        return result;
     }
 
     private static WorkingHourResponse ToResponse(WorkingHour w) => new()
@@ -104,4 +156,13 @@ public class WorkingHoursService(AppDbContext db)
         LunchStart = w.LunchStart?.ToString("HH:mm"),
         LunchEnd = w.LunchEnd?.ToString("HH:mm")
     };
+
+    private record ParsedWorkingHour(
+        DayOfWeek DayOfWeek,
+        bool IsOpen,
+        TimeOnly StartTime,
+        TimeOnly EndTime,
+        bool HasLunchBreak,
+        TimeOnly? LunchStart,
+        TimeOnly? LunchEnd);
 }
