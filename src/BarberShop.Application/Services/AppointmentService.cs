@@ -4,17 +4,19 @@ using BarberShop.Domain.Entities;
 using BarberShop.Domain.Enums;
 using BarberShop.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace BarberShop.Application.Services;
 
-public class AppointmentService(AppDbContext db, AvailabilityService availabilityService)
+public class AppointmentService(AppDbContext db,
+    AvailabilityService availabilityService,
+    ILogger<AppointmentService> logger)
 {
     public async Task<List<AppointmentResponse>> GetAsync(Guid userId, DateOnly? date = null)
     {
         // Se não tiver perfil ainda, retorna lista vazia em vez de lançar erro
         var profile = await db.BarberProfiles.FirstOrDefaultAsync(p => p.UserId == userId);
-        if (profile is null)
-            return [];
+        if (profile is null) return [];
 
         var query = db.Appointments
             .Include(a => a.Service)
@@ -48,11 +50,10 @@ public class AppointmentService(AppDbContext db, AvailabilityService availabilit
             throw new InvalidOperationException("Não é possível agendar em datas passadas.");
 
         // Verificar disponibilidades real (aplica todas as regras 1-9)
-        var availableSlots = await availabilityService.GetAvailableSlotsAsync(
-            barberProfileId, request.ServiceId, date);
+        var isAvailable = await availabilityService.IsSlotAvailableAsync(
+            barberProfileId, request.ServiceId, date, startTime);
 
-        var slotStr = startTime.ToString("HH:mm");
-        if (!availableSlots.Contains(slotStr))
+        if (!isAvailable)
             throw new InvalidOperationException("Horário não disponível.");
 
         var service = await db.Services.FindAsync(request.ServiceId)
@@ -86,6 +87,9 @@ public class AppointmentService(AppDbContext db, AvailabilityService availabilit
         db.Appointments.Add(appointment);
         await db.SaveChangesAsync();
 
+        logger.LogInformation("Agendamento criado. BarberProfileId: {BarberProfileId} Data: {Date} Horário: {StartTime}",
+            barberProfileId, date, startTime);
+
         await db.Entry(appointment).Reference(a => a.Service).LoadAsync();
         return ToResponse(appointment);
     }
@@ -100,6 +104,10 @@ public class AppointmentService(AppDbContext db, AvailabilityService availabilit
 
         appointment.Status = AppointmentStatus.Cancelled;
         await db.SaveChangesAsync();
+
+        logger.LogInformation(
+           "Agendamento cancelado. AppointmentId: {AppointmentId}", appointmentId);
+
 
         return ToResponse(appointment);
     }
@@ -116,6 +124,9 @@ public class AppointmentService(AppDbContext db, AvailabilityService availabilit
 
         appointment.Status = AppointmentStatus.Completed;
         await db.SaveChangesAsync();
+
+        logger.LogInformation(
+           "Agendamento concluído. AppointmentId: {AppointmentId}", appointmentId);
 
         return ToResponse(appointment);
     }

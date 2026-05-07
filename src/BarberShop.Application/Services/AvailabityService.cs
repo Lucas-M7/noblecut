@@ -54,42 +54,39 @@ public class AvailabilityService(AppDbContext db)
         DateOnly date)
     {
         // Queries independentes executadas em paralelo
-        var serviceTask = db.Services
+        var serviceTask = await db.Services
             .FirstOrDefaultAsync(s =>
                 s.Id == serviceId &&
                 s.BarberProfileId == barberProfileId &&
                 s.IsActive);
 
-        var isBlockedTask = db.ScheduleBlocks
+        var isBlockedTask = await db.ScheduleBlocks
             .AnyAsync(b =>
                 b.BarberProfileId == barberProfileId &&
                 b.StartDate <= date &&
                 b.EndDate >= date);
 
-        var specialHourTask = db.SpecialHours
-            .FirstOrDefaultAsync(s =>
-                s.BarberProfileId == barberProfileId &&
-                s.Date == date);
-
-        var workingHourTask = db.WorkingHours
-            .FirstOrDefaultAsync(w =>
-                w.BarberProfileId == barberProfileId &&
-                w.DayOfWeek == date.DayOfWeek);
-
-        // Aguarda todas as queries terminarem
-        await Task.WhenAll(serviceTask, isBlockedTask, specialHourTask, workingHourTask);
-
         // Se há bloqueio, não precisa buscar agendamentos
         // Evita uma query desnecessária
-        if (await isBlockedTask)
+        if (isBlockedTask)
         {
             return new AvailabilityData(
-                Service: await serviceTask,
+                Service: serviceTask,
                 IsBlocked: true,
                 SpecialHour: null,
                 WorkingHour: null,
                 ExistingAppointments: []);
         }
+
+        var specialHourTask = await db.SpecialHours
+            .FirstOrDefaultAsync(s =>
+                s.BarberProfileId == barberProfileId &&
+                s.Date == date);
+
+        var workingHourTask = await db.WorkingHours
+            .FirstOrDefaultAsync(w =>
+                w.BarberProfileId == barberProfileId &&
+                w.DayOfWeek == date.DayOfWeek);
 
         // Busca agendamentos do dia (cancelados não bloqueiam horário)
         var existingAppointments = await db.Appointments
@@ -101,10 +98,10 @@ public class AvailabilityService(AppDbContext db)
             .ToListAsync();
 
         return new AvailabilityData(
-            Service: await serviceTask,
+            Service: serviceTask,
             IsBlocked: false,
-            SpecialHour: await specialHourTask,
-            WorkingHour: await workingHourTask,
+            SpecialHour: specialHourTask,
+            WorkingHour: workingHourTask,
             ExistingAppointments: existingAppointments);
     }
 
@@ -211,6 +208,46 @@ public class AvailabilityService(AppDbContext db)
             return true;
 
         return false;
+    }
+
+    public async Task<bool> IsSlotAvailableAsync(
+        Guid barberProfileId,
+        Guid serviceId,
+        DateOnly date,
+        TimeOnly starTime)
+    {
+        var today = DateTimeHelper.TodayInBrasilia();
+
+        // Slot no passado nunca fica disponível
+        if (date < today) return false;
+        if (date == today &&
+            starTime.ToTimeSpan() <= DateTimeHelper.NowInBrasilia().TimeOfDay)
+            return false;
+
+        var data = await FetchAvailabilityDataAsync(barberProfileId, serviceId, date);
+
+        if (data.Service is null) return false;
+        if (data.IsBlocked) return false;
+
+        var schedule = data.SpecialHour is not null
+            ? BuildScheduleFromSpecialHour(data.SpecialHour)
+            : BuildScheduleFromWorkingHour(data.WorkingHour);
+
+        if (!schedule.IsOpen) return false;
+
+        var service = data.Service;
+        var serviceDuration = TimeSpan.FromMinutes(service.DurationMinutes);
+        var slotEnd = starTime.Add(serviceDuration);
+
+        if (slotEnd.ToTimeSpan() > schedule.EndTime.ToTimeSpan()) return false;
+
+        return !HasConflict(
+            starTime,
+            slotEnd,
+            schedule,
+            data.ExistingAppointments,
+            date,
+            today);
     }
 
     // ─── Tipos auxiliares
