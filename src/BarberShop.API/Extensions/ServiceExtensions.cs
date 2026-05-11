@@ -30,6 +30,7 @@ public static class ServiceExtensions
         services.AddScoped<SpecialHoursService>();
         services.AddScoped<ReportService>();
         services.AddScoped<CloudinaryService>();
+        services.AddScoped<PublicService>();
 
         return services;
     }
