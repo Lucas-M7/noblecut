@@ -21,23 +21,21 @@
 
 ### Painel do Barbeiro
 
-> **[PRINT 1]** —
+<img src="./assets/Captura de tela de 2026-05-13 21-42-54.png" alt="Dashboard inicial" width="800">
 
-> **[PRINT 2]** —
+<img src="./assets/Captura de tela de 2026-05-13 21-43-04.png" alt="Tela de agendamentos" width="800">
 
-> **[PRINT 3]** —
+<img src="./assets/Captura de tela de 2026-05-13 21-43-11.png" alt="Tela de relatório" width="800">
 
 ### Página Pública (visão do cliente)
 
-> **[PRINT 4]** —
+<img src="./assets/Captura de tela de 2026-05-13 21-43-34.png" alt="Primeira tela do cliente para escolher o serviço" width="800">
 
-> **[PRINT 5]** —
+<img src="./assets/Captura de tela de 2026-05-14 23-07-02.png" alt="Segunda tela do cliente para escolher a data" width="800">
 
-> **[PRINT 6]** —
+<img src="./assets/Captura de tela de 2026-05-14 23-07-10.png" alt="Terceira tela do cliente para escolher o horário" width="800">
 
-### Personalização
-
-> **[PRINT 7]** —
+<img src="./assets/Captura de tela de 2026-05-14 23-07-29.png" alt="Tela do cliente com o agendamento concluído" width="800">
 
 ---
 
