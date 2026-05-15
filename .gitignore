@@ -15,3 +15,7 @@ z
 
 src/BarberShop.API/Logs
 src/BarberShop.API/logs
+src/BarberShop.API/BarberShop.API.csproj.lscache
+src/BarberShop.Application/BarberShop.Application.csproj.lscache
+src/BarberShop.Domain/BarberShop.Domain.csproj.lscache
+src/BarberShop.Infrastructure/BarberShop.Infrastructure.csproj.lscache
