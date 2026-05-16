@@ -5,6 +5,7 @@ export interface AuthResponse {
     token: string
     name: string
     email: string
+    isEmailConfirmed: boolean
 }
 
 export interface Profile {

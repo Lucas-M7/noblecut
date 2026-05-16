@@ -13,7 +13,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.Id).HasColumnName("id").HasDefaultValueSql("gen_random_uuid()");
         builder.Property(u => u.Name).HasColumnName("name").HasMaxLength(100).IsRequired();
         builder.Property(u => u.Email).HasColumnName("email").HasMaxLength(150).IsRequired();
-        builder.Property(u => u.PasswordHash).HasColumnName("password_hash").IsRequired();
+        builder.Property(u => u.PasswordHash).HasColumnName("password_hash").IsRequired(false);
         builder.Property(u => u.IsEmailConfirmed).HasColumnName("is_email_confirmed").HasDefaultValue(false);
         builder.Property(u => u.CreatedAt).HasColumnName("created_at");
         builder.Property(u => u.UpdatedAt).HasColumnName("updated_at");

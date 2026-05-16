@@ -9,6 +9,8 @@ import { AuthResponse } from '@/src/types'
 import { Button } from '@/src/components/ui/Button'
 import { Input } from '@/src/components/ui/Input'
 import { Card } from '@/src/components/ui/Card'
+import { GoogleSignInButton } from '@/src/components/ui/GoogleSignInButton'
+import { OrDivider } from '@/src/components/ui/OrDivider'
 
 export default function LoginPage() {
   const { login } = useAuth()
@@ -40,6 +42,10 @@ export default function LoginPage() {
         </div>
 
         <Card>
+          <GoogleSignInButton mode="signin" />
+
+          <OrDivider />
+
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <Input
               label="E-mail"
@@ -72,14 +78,14 @@ export default function LoginPage() {
             </Link>
           </p>
 
-          {/* <p className="text-center text-sm text-zinc-500 dark:text-zinc-400 mt-2">
+          <p className="text-center text-sm text-zinc-500 dark:text-zinc-400 mt-2">
             <Link
               href="/forgot-password"
               className="text-zinc-900 dark:text-zinc-100 hover:underline"
             >
               Esqueci minha senha
             </Link>
-          </p> */}
+          </p>
         </Card>
       </div>
     </div>

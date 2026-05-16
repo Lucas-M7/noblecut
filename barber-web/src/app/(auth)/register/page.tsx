@@ -9,6 +9,8 @@ import { AuthResponse } from '@/src/types'
 import { Button } from '@/src/components/ui/Button'
 import { Input } from '@/src/components/ui/Input'
 import { Card } from '@/src/components/ui/Card'
+import { GoogleSignInButton } from '@/src/components/ui/GoogleSignInButton'
+import { OrDivider } from '@/src/components/ui/OrDivider'
 
 export default function RegisterPage() {
   const { login } = useAuth()
@@ -27,7 +29,14 @@ export default function RegisterPage() {
     try {
       const data = await api.post<AuthResponse>('/api/auth/register', form)
       login(data.token, data.name)
-      toast.success('Conta criada com sucesso!')
+
+      if (!data.isEmailConfirmed) {
+        toast.success('Conta criada! Verifique seu e-mail para confirmar o cadastro.', {
+          duration: 6000,
+        })
+      } else {
+        toast.success('Conta criada com sucesso!')
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Erro ao criar conta.'
       toast.error(message)
@@ -37,14 +46,18 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-zinc-900">✂️ Noblecut</h1>
-          <p className="text-zinc-500 mt-2">Crie sua conta</p>
+          <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">✂️ Noblecut</h1>
+          <p className="text-zinc-500 dark:text-zinc-400 mt-2">Crie sua conta</p>
         </div>
 
         <Card>
+          <GoogleSignInButton mode="signup" />
+
+          <OrDivider />
+
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <Input
               label="Seu nome"
@@ -74,7 +87,7 @@ export default function RegisterPage() {
             </Button>
           </form>
 
-          <p className="text-center text-sm text-zinc-500 mt-4">
+          <p className="text-center text-sm text-zinc-500 dark:text-zinc-400 mt-4">
             Já tem conta?{' '}
             <Link href="/login" className="text-zinc-900 dark:text-zinc-100 font-medium hover:underline">
               Entrar
