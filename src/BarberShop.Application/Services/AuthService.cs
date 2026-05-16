@@ -2,6 +2,7 @@ using BarberShop.Application.DTOs.Auth;
 using BarberShop.Domain.Entities;
 using BarberShop.Domain.Enums;
 using BarberShop.Infrastructure.Data;
+using Google.Apis.Auth;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -33,13 +34,15 @@ public class AuthService(
             Name = request.Name.Trim(),
             Email = normalizedEmail,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
-            IsEmailConfirmed = true
+            IsEmailConfirmed = false
         };
 
         db.Users.Add(user);
         await db.SaveChangesAsync();
 
         logger.LogInformation("Novo usuário cadastrado. UserId: {UserId}", user.Id);
+
+        await SendConfirmationEmailInternalAsync(user);
 
         return new AuthResponse
         {
@@ -89,6 +92,57 @@ public class AuthService(
         };
     }
 
+    public async Task<AuthResponse> GoogleLoginAsync(GoogleAuthRequest request)
+    {
+        GoogleJsonWebSignature.Payload payload;
+        try
+        {
+            var settings = new GoogleJsonWebSignature.ValidationSettings
+            {
+                Audience = [config["Google:ClientId"]!]
+            };
+            payload = await GoogleJsonWebSignature.ValidateAsync(request.IdToken, settings);
+        }
+        catch (InvalidJwtException ex)
+        {
+            logger.LogWarning("Token Google inválido: {message}", ex.Message);
+            throw new UnauthorizedAccessException("Token do Google inválido ou expirado.");
+        }
+
+        var email = payload.Email.Trim().ToLower();
+        var name = !string.IsNullOrWhiteSpace(payload.Name)
+            ? payload.Name.Trim()
+            : email.Split('@')[0]; // fallback caso o Google não retorne o nome
+
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Email == email);
+
+        if (user is null)
+        {
+            user = new User
+            {
+                Id = Guid.NewGuid(),
+                Name = name,
+                Email = email,
+                PasswordHash = null,
+                IsEmailConfirmed = true
+            };
+
+            db.Users.Add(user);
+            await db.SaveChangesAsync();
+
+            logger.LogInformation(
+                "Login via Google para usuário existente. UserId: {UserId}", user.Id);
+        }
+
+        return new AuthResponse
+        {
+            Token = GenerateToken(user),
+            Name = user.Name,
+            Email = user.Email,
+            IsEmailConfirmed = user.IsEmailConfirmed
+        };
+    }
+
     public async Task<AuthResponse> GetMeAsync(Guid userId)
     {
         var user = await db.Users.FindAsync(userId)
@@ -119,6 +173,9 @@ public class AuthService(
         emailToken.UsedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync();
+
+        logger.LogInformation(
+            "Email confirmado. UserId: {UserId}", emailToken.UserId);
     }
 
     public async Task ForgotPasswordAsync(ForgotPasswordRequest request)
@@ -130,6 +187,13 @@ public class AuthService(
         if (user is null)
         {
             logger.LogWarning("ForgotPassword: email não cadastrado solicitou reset.");
+            return;
+        }
+
+        if (user.PasswordHash is null)
+        {
+            logger.LogWarning(
+                "ForgotPassword ignorado, conta Google sem senha. UserId: {UserId}", user.Id);
             return;
         }
 
@@ -146,7 +210,8 @@ public class AuthService(
 
         try
         {
-            await emailService.SendPasswordResetAsync(user.Email, user.Name, token);
+            var resetLink = BuildLink("reset-password", token);
+            await emailService.SendPasswordResetAsync(user.Email, user.Name, resetLink);
         }
         catch (Exception ex)
         {
@@ -175,24 +240,41 @@ public class AuthService(
         logger.LogInformation("Senha redefinida com sucesso. UserId: {UserId}", emailToken.UserId);
     }
 
-    public async Task ResendConfirmationAsync(Guid userId)
+    // public async Task ResendConfirmationAsync(Guid userId)
+    // {
+    //     var user = await db.Users.FindAsync(userId)
+    //         ?? throw new KeyNotFoundException("Usuário não encontrado.");
+
+    //     if (user.IsEmailConfirmed)
+    //         throw new InvalidOperationException("E-mail já confirmado.");
+
+    //     try
+    //     {
+    //         var token = await CreateEmailTokenAsync(user.Id, EmailTokenType.EmailConfirmation, hours: 24);
+    //         await emailService.SendEmailConfirmationAsync(user.Email, user.Name, token);
+    //     }
+    //     catch (Exception ex)
+    //     {
+    //         logger.LogWarning("Falha ao reenviar confirmação. UserId: {UserId}. Erro: {Error}",
+    //             user.Id, ex.Message);
+    //         throw new InvalidOperationException("Não foi possível enviar o email. Tente novamente.");
+    //     }
+    // }
+
+    private async Task SendConfirmationEmailInternalAsync(User user)
     {
-        var user = await db.Users.FindAsync(userId)
-            ?? throw new KeyNotFoundException("Usuário não encontrado.");
-
-        if (user.IsEmailConfirmed)
-            throw new InvalidOperationException("E-mail já confirmado.");
-
         try
         {
-            var token = await CreateEmailTokenAsync(user.Id, EmailTokenType.EmailConfirmation, hours: 24);
-            await emailService.SendEmailConfirmationAsync(user.Email, user.Name, token);
+            var token = await CreateEmailTokenAsync(
+                user.Id, EmailTokenType.EmailConfirmation, hours: 24);
+
+            var confirmLink = BuildLink("confirm-email", token);
+            await emailService.SendEmailConfirmationAsync(user.Email, user.Name, confirmLink);
         }
         catch (Exception ex)
         {
-            logger.LogWarning("Falha ao reenviar confirmação. UserId: {UserId}. Erro: {Error}",
-                user.Id, ex.Message);
-            throw new InvalidOperationException("Não foi possível enviar o email. Tente novamente.");
+            logger.LogWarning("Falha ao enviar confirmação de email. UserId: {UserId}. Erro: {Error}",
+            user.Id, ex.Message);
         }
     }
 
@@ -213,6 +295,18 @@ public class AuthService(
         await db.SaveChangesAsync();
 
         return token;
+    }
+
+    /// <summary>
+    /// Monta a URL do frontend para links de email.
+    /// </summary>
+    /// <param name="path"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private string BuildLink(string path, string token)
+    {
+        var frontendUrl = config["App:FrontendUrl"]!.TrimEnd('/');
+        return $"{frontendUrl}/{path}?token={token}";
     }
 
     private string GenerateToken(User user)

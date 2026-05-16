@@ -24,6 +24,14 @@ public class AuthController(AuthService authService) : BaseController
         return Ok(result);
     }
 
+    [HttpPost("google")]
+    [EnableRateLimiting("login")]
+    public async Task<IActionResult> Google([FromBody] GoogleAuthRequest request)
+    {
+        var result = await authService.GoogleLoginAsync(request);
+        return Ok(result);
+    }
+
     [Authorize]
     [HttpGet("me")]
     public async Task<IActionResult> Me()
